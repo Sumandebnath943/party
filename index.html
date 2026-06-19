@@ -43,6 +43,14 @@
         </div>
       </div>
       <div class="header-right">
+        <!-- New Guide Toggle -->
+        <div class="guide-toggle">
+          <span class="guide-label">GUIDE</span>
+          <label class="switch">
+            <input type="checkbox" id="guide-switch">
+            <span class="slider"></span>
+          </label>
+        </div>
         <div class="stats-group">
           <div class="stat">
             <span class="stat-label">SCORE</span>
@@ -78,6 +86,18 @@
           <div id="playhead"><div class="playhead-line"></div></div>
         </div>
       </div>
+
+      <!-- Studio Assistant Panel -->
+      <aside id="assistant" class="hidden">
+        <div class="assistant-header">
+          <span class="assistant-icon">✨</span>
+          <h3>Studio Guide</h3>
+        </div>
+        <div class="assistant-content">
+          <p id="assistant-hint">Waiting for input...</p>
+          <div id="assistant-reason" class="assistant-reason"></div>
+        </div>
+      </aside>
     </div>
 
     <!-- Bottom -->

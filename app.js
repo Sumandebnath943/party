@@ -54,6 +54,53 @@ const state = {
   nextStepTime: 0,
 };
 
+// ---- Guidance Engine ----
+const GuidanceEngine = {
+  analyze(grid) {
+    if (!els.guideSwitch || !els.guideSwitch.checked) return;
+    
+    const kicks = grid[0];
+    const snares = grid[1];
+    const claps = grid[2];
+    const bass = grid[4];
+    const lead = grid[5];
+    const synth = grid[7];
+    const sax = grid[8];
+    
+    let totalActive = 0;
+    grid.forEach(row => row.forEach(val => totalActive += val ? 1 : 0));
+    
+    let hint = "Pattern looks good! Try experimenting with effects.";
+    let reason = "Your arrangement is balanced.";
+    
+    if (!kicks.some(v => v)) {
+      hint = "Add a KICK drum to start your beat.";
+      reason = "Music needs a pulse. Placing kicks on beats 1, 5, 9, and 13 establishes a strong 4/4 foundation.";
+    } else if (!((snares[4] || claps[4]) && (snares[12] || claps[12]))) {
+      hint = "Add a SNARE or CLAP on beats 5 and 13.";
+      reason = "A strong backbeat on the 2nd and 4th beats provides the essential groove for dance music.";
+    } else if (!bass.some(v => v)) {
+      hint = "Drop in a BASS line.";
+      reason = "Bass roots the harmony. Put bass notes on the kick for power, or between kicks for syncopated groove.";
+    } else {
+      let clashes = 0;
+      for(let i=0; i<16; i++) {
+        if ((lead[i] && sax[i]) || (lead[i] && synth[i]) || (sax[i] && synth[i])) clashes++;
+      }
+      if (clashes > 2) {
+        hint = "Stagger your melodies.";
+        reason = "Frequency Clash! Your lead instruments are hitting at the same time. Use 'call and response' instead.";
+      } else if (totalActive > 60) {
+         hint = "Clear some space.";
+         reason = "The mix is muddy. In music, silence is just as important as sound. Try muting tracks.";
+      }
+    }
+    
+    if (els.assistantHint) els.assistantHint.textContent = hint;
+    if (els.assistantReason) els.assistantReason.textContent = reason;
+  }
+};
+
 // ---- Gamification Logic ----
 function addScore(amount, x, y, reason = '') {
   const points = amount * game.multiplier;
@@ -438,7 +485,7 @@ function scheduleStep(step, time) {
   setTimeout(() => {
     updatePlayhead(step);
     if (playedNote) addCombo();
-    else if (game.combo > 0) resetCombo(); // Missed a beat, reset combo (maybe harsh? let's keep it for gamification)
+    else if (game.combo > 0) resetCombo();
   }, delay);
 }
 
@@ -492,6 +539,33 @@ function toggleSequencer() {
 }
 
 // ---- UI Builder ----
+const els = {
+  grid: document.getElementById('grid'),
+  playhead: document.getElementById('playhead'),
+  playBtn: document.getElementById('play-btn'),
+  playIcon: document.getElementById('play-icon'),
+  pauseIcon: document.getElementById('pause-icon'),
+  bpmDown: document.getElementById('bpm-down'),
+  bpmUp: document.getElementById('bpm-up'),
+  bpmVal: document.getElementById('bpm-val'),
+  randomBtn: document.getElementById('random-btn'),
+  clearBtn: document.getElementById('clear-btn'),
+  labels: document.getElementById('labels'),
+  stepNumbers: document.getElementById('step-numbers'),
+  waveform: document.getElementById('waveform'),
+  presetBtns: document.querySelectorAll('.preset-btn'),
+  scoreVal: document.getElementById('score-val'),
+  comboVal: document.getElementById('combo-val'),
+  energyFill: document.getElementById('energy-fill'),
+  energyLabel: document.getElementById('energy-label'),
+  toastContainer: document.getElementById('toast-container'),
+  scorePopups: document.getElementById('score-popups'),
+  guideSwitch: document.getElementById('guide-switch'),
+  assistant: document.getElementById('assistant'),
+  assistantHint: document.getElementById('assistant-hint'),
+  assistantReason: document.getElementById('assistant-reason')
+};
+
 function buildGrid() {
   const grid = document.getElementById('grid');
   const nums = document.getElementById('step-numbers');
@@ -557,7 +631,7 @@ function buildGrid() {
   window.addEventListener('mouseup', onUp);
   grid.addEventListener('touchstart', onDown, { passive: false });
   grid.addEventListener('touchmove', onMove, { passive: false });
-  window.addEventListener('touchend', onUp);
+  window.touchend = onUp;
 }
 
 function toggleCell(cell, track, step, value) {
@@ -568,6 +642,16 @@ function toggleCell(cell, track, step, value) {
     if (synthFn) synthFn(audioCtx.currentTime, step);
     spawnParticles(track, step);
   }
+  addScore(value ? 10 : 5, 0, 0);
+  addEnergy(value ? 2 : -1);
+  GuidanceEngine.analyze(state.grid);
+}
+
+function renderGrid() {
+    document.querySelectorAll('.cell').forEach(cell => {
+        const t = +cell.dataset.track, s = +cell.dataset.step;
+        cell.classList.toggle('active', state.grid[t][s]);
+    });
 }
 
 function buildLabels() {
@@ -592,15 +676,15 @@ function buildLabels() {
 function randomizePattern() {
   for (let t = 0; t < TRACKS.length; t++) {
     for (let s = 0; s < STEPS; s++) {
-      // Different probabilities for different tracks
       let prob = 0.1;
-      if (t === 0 || t === 1) prob = 0.2; // kick/snare more common
-      if (t === 3) prob = 0.4; // hats very common
+      if (t === 0 || t === 1) prob = 0.2;
+      if (t === 3) prob = 0.4;
       state.grid[t][s] = Math.random() < prob;
     }
   }
-  refreshGridUI();
+  renderGrid();
   addScore(100, window.innerWidth/2, 50, 'RANDOMIZED!');
+  GuidanceEngine.analyze(state.grid);
   if (!game.achievements.has('CHAOS')) unlockAchievement('CHAOS', 'Embrace Chaos', '🎲', 300);
 }
 
@@ -616,31 +700,34 @@ function bindControls() {
   });
   document.getElementById('clear-btn').addEventListener('click', () => {
     state.grid = Array(TRACKS.length).fill(null).map(() => Array(STEPS).fill(false));
-    refreshGridUI();
-    resetCombo();
+    renderGrid();
+    game.combo = 0;
+    updateEnergyUI();
+    GuidanceEngine.analyze(state.grid);
   });
   document.getElementById('random-btn').addEventListener('click', randomizePattern);
 
-  document.querySelectorAll('.preset-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+  els.presetBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
       const idx = +btn.dataset.preset;
       state.presets[state.currentPreset] = state.grid.map(r => [...r]);
       state.currentPreset = idx;
       if (state.presets[idx]) state.grid = state.presets[idx].map(r => [...r]);
-      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      refreshGridUI();
+      els.presetBtns.forEach(b => b.classList.toggle('active', b === e.target));
+      renderGrid();
+      GuidanceEngine.analyze(state.grid);
     });
   });
 
+  if (els.guideSwitch) {
+    els.guideSwitch.addEventListener('change', (e) => {
+      els.assistant.classList.toggle('hidden', !e.target.checked);
+      if (e.target.checked) GuidanceEngine.analyze(state.grid);
+    });
+  }
+
   document.addEventListener('keydown', (e) => {
     if (e.code === 'Space') { e.preventDefault(); toggleSequencer(); }
-  });
-}
-
-function refreshGridUI() {
-  document.querySelectorAll('.cell').forEach(cell => {
-    cell.classList.toggle('active', state.grid[+cell.dataset.track][+cell.dataset.step]);
   });
 }
 
@@ -736,7 +823,6 @@ function render() {
   drawParticles();
   drawWaveform();
   
-  // Slow energy drain
   drainEnergy();
   
   requestAnimationFrame(render);
