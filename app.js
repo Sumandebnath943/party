@@ -514,8 +514,11 @@ function scheduleStep(step, time) {
   const delay = Math.max(0, (time - audioCtx.currentTime) * 1000);
   setTimeout(() => {
     updatePlayhead(step);
-    if (playedNote) addCombo();
-    else if (game.combo > 0) resetCombo();
+    if (playedNote) {
+       state.combo++;
+       if (state.combo > game.maxCombo) game.maxCombo = state.combo;
+       updateStats();
+    } else if (game.combo > 0) resetCombo();
   }, delay);
 }
 
@@ -526,25 +529,36 @@ function triggerVisual(track, step) {
     cell.classList.remove('triggered');
     void cell.offsetWidth;
     cell.classList.add('triggered');
-    
-    // Add points for playing a note
-    const rect = cell.getBoundingClientRect();
-    addScore(10, rect.left + rect.width/2, rect.top);
   }
-  spawnParticles(track, step);
+  // Throttled particle spawn to reduce lag
+  if (Math.random() < 0.3) spawnParticles(track, step);
 }
 
+// Cache positions to prevent DOM layout thrashing (which causes severe lag)
+let cellPositions = null;
 function updatePlayhead(step) {
   const playhead = document.getElementById('playhead');
   if (!playhead) return;
-  const cell = document.querySelector(`.cell[data-step="${step}"]`);
-  if (!cell) return;
-  const container = document.getElementById('grid-container');
-  const cRect = container.getBoundingClientRect();
-  const cellRect = cell.getBoundingClientRect();
-  playhead.style.left = (cellRect.left - cRect.left) + 'px';
-  playhead.style.width = cellRect.width + 'px';
+  if (!cellPositions) {
+    cellPositions = [];
+    const container = document.getElementById('grid-container');
+    const cRect = container.getBoundingClientRect();
+    for(let s=0; s<16; s++) {
+      const cell = document.querySelector(`.cell[data-step="${s}"]`);
+      if (cell) {
+        const cellRect = cell.getBoundingClientRect();
+        cellPositions[s] = { left: cellRect.left - cRect.left, width: cellRect.width };
+      }
+    }
+  }
+  const pos = cellPositions[step];
+  if (pos) {
+    playhead.style.transform = `translateX(${pos.left}px)`;
+    playhead.style.width = pos.width + 'px';
+  }
 }
+
+window.addEventListener('resize', () => { cellPositions = null; });
 
 function toggleSequencer() {
   if (!audioCtx) initAudio();
@@ -616,7 +630,7 @@ function buildGrid() {
       cell.className = 'cell' + (step % 4 === 0 ? ' beat-start' : '');
       cell.dataset.track = track;
       cell.dataset.step = step;
-      cell.style.setProperty('--cell-clr', TRACKS[track].color);
+      cell.style.setProperty('--track-color', TRACKS[track].color);
       if (state.grid[track][step]) cell.classList.add('active');
       grid.appendChild(cell);
     }
