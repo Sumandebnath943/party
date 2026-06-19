@@ -59,43 +59,73 @@ const GuidanceEngine = {
   analyze(grid) {
     if (!els.guideSwitch || !els.guideSwitch.checked) return;
     
-    const kicks = grid[0];
-    const snares = grid[1];
-    const claps = grid[2];
-    const bass = grid[4];
-    const lead = grid[5];
-    const synth = grid[7];
-    const sax = grid[8];
+    const kicks = grid[0], snares = grid[1], claps = grid[2], hats = grid[3];
+    const bass = grid[4], lead = grid[5], pad = grid[6], synth = grid[7], sax = grid[8];
     
     let totalActive = 0;
     grid.forEach(row => row.forEach(val => totalActive += val ? 1 : 0));
     
-    let hint = "Pattern looks good! Try experimenting with effects.";
-    let reason = "Your arrangement is balanced.";
+    let hint = "Pattern looks solid! Keep experimenting.";
+    let reason = "Your arrangement has a nice balance of elements.";
     
-    if (!kicks.some(v => v)) {
-      hint = "Add a KICK drum to start your beat.";
-      reason = "Music needs a pulse. Placing kicks on beats 1, 5, 9, and 13 establishes a strong 4/4 foundation.";
-    } else if (!((snares[4] || claps[4]) && (snares[12] || claps[12]))) {
-      hint = "Add a SNARE or CLAP on beats 5 and 13.";
-      reason = "A strong backbeat on the 2nd and 4th beats provides the essential groove for dance music.";
-    } else if (!bass.some(v => v)) {
-      hint = "Drop in a BASS line.";
-      reason = "Bass roots the harmony. Put bass notes on the kick for power, or between kicks for syncopated groove.";
-    } else {
-      let clashes = 0;
-      for(let i=0; i<16; i++) {
-        if ((lead[i] && sax[i]) || (lead[i] && synth[i]) || (sax[i] && synth[i])) clashes++;
-      }
-      if (clashes > 2) {
-        hint = "Stagger your melodies.";
-        reason = "Frequency Clash! Your lead instruments are hitting at the same time. Use 'call and response' instead.";
-      } else if (totalActive > 60) {
-         hint = "Clear some space.";
-         reason = "The mix is muddy. In music, silence is just as important as sound. Try muting tracks.";
-      }
+    if (totalActive === 0) {
+      hint = "Start with a 4-on-the-floor kick drum.";
+      reason = "Placing a kick on steps 1, 5, 9, and 13 is the foundation of most dance tracks.";
+      return this.updateUI(hint, reason);
+    }
+
+    const kicksOnBeats = kicks[0] && kicks[4] && kicks[8] && kicks[12];
+    const snareOnBackbeat = (snares[4] || claps[4]) && (snares[12] || claps[12]);
+    const offbeatHats = hats[2] && hats[6] && hats[10] && hats[14];
+
+    if (kicksOnBeats && !snareOnBackbeat) {
+      hint = "House beat detected! Add a backbeat.";
+      reason = "You have a solid 4-on-the-floor kick. Add a Snare or Clap on steps 5 and 13 to give it that driving energy.";
+      return this.updateUI(hint, reason);
     }
     
+    if (kicksOnBeats && snareOnBackbeat && !offbeatHats) {
+      hint = "Add some bounce with off-beat Hi-Hats.";
+      reason = "Place Hi-Hats on steps 3, 7, 11, and 15. This fills the gaps between the kicks and makes the groove irresistible.";
+      return this.updateUI(hint, reason);
+    }
+
+    const hasBass = bass.some(v => v);
+    if (!hasBass && kicks.some(v => v)) {
+      hint = "Drop in a Bassline.";
+      reason = "A beat without bass feels empty. Try placing bass notes on the exact same steps as your kick for maximum punch.";
+      return this.updateUI(hint, reason);
+    }
+    
+    if (hasBass && kicks.some(v => v)) {
+      let bassAlwaysOnKick = true;
+      for(let i=0; i<16; i++) { if (bass[i] && !kicks[i]) bassAlwaysOnKick = false; }
+      if (bassAlwaysOnKick && bass.filter(v => v).length > 2) {
+        hint = "Try syncopating your Bassline.";
+        reason = "Your bass strictly follows the kick. Shift a few bass notes one step left or right to create a funky, syncopated feel.";
+        return this.updateUI(hint, reason);
+      }
+    }
+
+    let clashes = 0;
+    for(let i=0; i<16; i++) {
+      if ((lead[i] && sax[i]) || (lead[i] && synth[i]) || (sax[i] && synth[i])) clashes++;
+    }
+    if (clashes > 2) {
+      hint = "Separate your Melodies (Call & Response).";
+      reason = "Your Lead, Sax, and Synth are playing at the exact same time, creating a frequency clash. Have one answer the other instead!";
+      return this.updateUI(hint, reason);
+    }
+
+    if (totalActive > 50) {
+       hint = "Create a Breakdown: Drop the drums!";
+       reason = "The mix is very dense. Try clearing your kicks and bass for a few cycles to build tension, then bring them back for a huge drop.";
+       return this.updateUI(hint, reason);
+    }
+    
+    this.updateUI(hint, reason);
+  },
+  updateUI(hint, reason) {
     if (els.assistantHint) els.assistantHint.textContent = hint;
     if (els.assistantReason) els.assistantReason.textContent = reason;
   }

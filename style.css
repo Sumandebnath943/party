@@ -9,32 +9,33 @@
 }
 
 :root {
-  --bg: #030305;
-  --surface: rgba(18, 18, 28, 0.4);
+  --bg: #09090e;
+  --surface: rgba(15, 15, 24, 0.65);
   --surface-solid: #0d0d14;
-  --surface2: rgba(255, 255, 255, 0.03);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-light: rgba(255, 255, 255, 0.15);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-  --glass-blur: blur(16px);
-  --pad-bevel: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 2px rgba(0,0,0,0.5);
+  --surface2: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+  --glass-blur: blur(12px);
+  --pad-bevel: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 3px rgba(0,0,0,0.8);
 
   --text: #ffffff;
-  --text-dim: #9494a8;
-  --text-muted: #4d4d60;
+  --text-dim: #a3a3bd;
+  --text-muted: #5e5e78;
 
-  --kick: #ff3366;
-  --snare: #f4f4f5;
-  --clap: #ffc107;
-  --hihat: #00e5ff;
-  --bass: #a855f7;
-  --lead: #3b82f6;
-  --pad: #ec4899;
-  --synth: #f97316;
-  --sax: #eab308;
-  --brass: #ef4444;
-  --bell: #8b5cf6;
-  --fx: #10b981;
+  /* Ultra Vibrant Palette */
+  --kick: #ff0055;
+  --snare: #ffffff;
+  --clap: #ffd500;
+  --hihat: #00f2ff;
+  --bass: #d500ff;
+  --lead: #0066ff;
+  --pad: #ff00aa;
+  --synth: #ff6600;
+  --sax: #ffcc00;
+  --brass: #ff0033;
+  --bell: #9d00ff;
+  --fx: #00ffaa;
 
   --font: 'Outfit', -apple-system, sans-serif;
   --mono: 'JetBrains Mono', monospace;
@@ -286,19 +287,19 @@ body.overload #energy-glow {
 
 /* Tactile Cells */
 .cell {
-  border-radius: 6px; background: rgba(20, 20, 30, 0.6);
-  border: 1px solid rgba(255,255,255,0.03);
-  box-shadow: var(--pad-bevel);
+  border-radius: 6px; background: rgba(10, 10, 15, 0.8);
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.05);
   cursor: pointer; position: relative;
   transition: all 0.1s;
 }
-.cell:hover { background: rgba(255,255,255,0.06); }
+.cell:hover { background: rgba(255,255,255,0.1); }
 .cell.active {
-  background: var(--track-color); border-color: rgba(255,255,255,0.4);
-  box-shadow: 0 0 15px var(--track-glow), inset 0 2px 5px rgba(255,255,255,0.3);
+  background: var(--track-color); border-color: #fff;
+  box-shadow: 0 0 25px var(--track-color), inset 0 0 10px rgba(255,255,255,0.8);
 }
-.cell.triggered { transform: scale(0.95); }
-.cell.triggered.active { filter: brightness(1.5); box-shadow: 0 0 25px var(--track-glow); }
+.cell.triggered { transform: scale(0.9); }
+.cell.triggered.active { filter: brightness(1.8); box-shadow: 0 0 40px var(--track-color), inset 0 0 20px #fff; }
 
 /* Playhead */
 #playhead {
