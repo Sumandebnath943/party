@@ -522,20 +522,26 @@ function scheduleStep(step, time) {
   }, delay);
 }
 
+// ---- Performance Cached Variables ----
+let cellNodesCache = null;
+let cellPositions = null;
+let gridTopCache = 0;
+let rowHeightCache = 0;
+
 function triggerVisual(track, step) {
+  if (!cellNodesCache) cellNodesCache = Array.from(document.querySelectorAll('.cell'));
   const cellIdx = track * STEPS + step;
-  const cell = document.querySelectorAll('.cell')[cellIdx];
+  const cell = cellNodesCache[cellIdx];
   if (cell) {
     cell.classList.remove('triggered');
-    void cell.offsetWidth;
-    cell.classList.add('triggered');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => cell.classList.add('triggered'));
+    });
   }
-  // Throttled particle spawn to reduce lag
-  if (Math.random() < 0.3) spawnParticles(track, step);
+  // Throttled particle spawn
+  if (Math.random() < 0.2) spawnParticles(track, step);
 }
 
-// Cache positions to prevent DOM layout thrashing (which causes severe lag)
-let cellPositions = null;
 function updatePlayhead(step) {
   const playhead = document.getElementById('playhead');
   if (!playhead) return;
@@ -543,11 +549,18 @@ function updatePlayhead(step) {
     cellPositions = [];
     const container = document.getElementById('grid-container');
     const cRect = container.getBoundingClientRect();
+    gridTopCache = cRect.top;
+    rowHeightCache = cRect.height / 12;
+    
     for(let s=0; s<16; s++) {
       const cell = document.querySelector(`.cell[data-step="${s}"]`);
       if (cell) {
         const cellRect = cell.getBoundingClientRect();
-        cellPositions[s] = { left: cellRect.left - cRect.left, width: cellRect.width };
+        cellPositions[s] = { 
+          left: cellRect.left - cRect.left, 
+          width: cellRect.width,
+          absLeft: cellRect.left
+        };
       }
     }
   }
@@ -558,7 +571,7 @@ function updatePlayhead(step) {
   }
 }
 
-window.addEventListener('resize', () => { cellPositions = null; });
+window.addEventListener('resize', () => { cellPositions = null; cellNodesCache = null; });
 
 function toggleSequencer() {
   if (!audioCtx) initAudio();
@@ -635,6 +648,7 @@ function buildGrid() {
       grid.appendChild(cell);
     }
   }
+  cellNodesCache = Array.from(document.querySelectorAll('.cell'));
 
   let painting = false, paintValue = true, lastCell = null;
   const onDown = (e) => {
@@ -790,21 +804,24 @@ resizeFX();
 window.addEventListener('resize', resizeFX);
 
 function spawnParticles(track, step) {
-  const cell = document.querySelectorAll('.cell')[track * STEPS + step];
-  if (!cell) return;
-  const rect = cell.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
+  if (particles.length > 40) return; // Strict limit to prevent lag
+  if (!cellPositions) return;
+  
+  const pos = cellPositions[step];
+  if (!pos) return;
 
-  const count = 5 + Math.floor(Math.random() * 5);
+  const cx = pos.absLeft + pos.width / 2;
+  const cy = gridTopCache + (rowHeightCache * track) + (rowHeightCache / 2);
+
+  const count = 3 + Math.floor(Math.random() * 3);
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const speed = 2 + Math.random() * 3;
+    const speed = 1 + Math.random() * 2;
     particles.push({
       x: cx, y: cy,
       vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-      life: 1, decay: 0.02 + Math.random() * 0.03,
-      size: 2 + Math.random() * 3,
+      life: 1, decay: 0.03 + Math.random() * 0.05,
+      size: 1.5 + Math.random() * 2,
       color: TRACKS[track].color
     });
   }
@@ -825,12 +842,12 @@ function drawParticles() {
   for (const p of particles) {
     fxCtx.globalAlpha = p.life;
     fxCtx.fillStyle = p.color;
-    fxCtx.shadowColor = p.color; fxCtx.shadowBlur = 10;
+    // Removed shadowBlur to drastically improve performance
     fxCtx.beginPath();
     fxCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
     fxCtx.fill();
   }
-  fxCtx.globalAlpha = 1; fxCtx.shadowBlur = 0;
+  fxCtx.globalAlpha = 1;
 }
 
 // ---- Waveform ----
